@@ -1,64 +1,73 @@
-variable "teamid" {
-  description = "Name of the team/group e.g. devops, dataengineering. Should not be changed after running 'tf apply'"
-  type        = string
+variable "eventhub_namespaces_hubs" {
+  type        = any
+  description = "Map to handle Eventhub creation. It supports the creation of the hubs, authorization_rule associated with each namespace you create"
 }
 
-variable "prjid" {
-  description = "Name of the project/stack e.g: mystack, nifieks, demoaci. Should not be changed after running 'tf apply'"
+variable "namespace_name" {
   type        = string
+  description = "Namespace name"
 }
 
-variable "eventhub_namespaces_config" {
-  description = "Resource group configuration"
+variable "resource_group_name" {
+  type        = string
+  description = "The resource group where to deploy the EventHub Namespace."
+}
+
+variable "location" {
+  type        = string
+  description = "Specifies the supported Azure location where the resource exists."
+}
+
+variable "tags" {
   type        = map(any)
-}
-
-
-variable "extra_tags" {
-  description = "Additional tags to associate"
-  type        = map(string)
+  description = "A mapping of tags to assign to the resource"
   default     = {}
 }
 
-variable "hubs" {
-  description = "A list of event hubs to add to namespace."
-  type = list(object({
-        name       = optional(string)
-    partition_count   = number
-    message_retention = optional(number, 7)
-    capture_description = optional(object({
-      enabled             = optional(bool, true)
-      encoding            = string
-      interval_in_seconds = optional(number)
-      size_limit_in_bytes = optional(number)
-      skip_empty_archives = optional(bool)
-      destination = object({
-        name                = optional(string, "EventHubArchive.AzureBlockBlob")
-        archive_name_format = optional(string)
-        blob_container_name = string
-        storage_account_id  = string
-      })
-    }))
-
-    consumer_group = optional(object({
-      enabled       = optional(bool, false)
-      custom_name   = optional(string)
-      user_metadata = optional(string)
-    }), {})
-
-    authorizations = optional(object({
-      listen = optional(bool, true)
-      send   = optional(bool, true)
-      manage = optional(bool, true)
-    }), {})
-  }))
-  default = []
+variable "sku" {
+  type        = string
+  description = "Defines which tier to use. Valid options are Basic or Standard."
+  validation {
+    condition     = (var.sku == "Basic" || var.sku == "Standard")
+    error_message = "Invalid sku. Valid options for sku are Basic or Standard."
+  }
 }
 
-#variable "capture_description" {
-#  description = "Capture the streaming data in Event Hubs in an Azure Blob storage or Azure Data Lake Storage."
-#  type = object({
-#    variables = map(string)
-#  })
-#  default = null
-#}
+variable "capacity" {
+  type        = number
+  description = "Specifies the Capacity / Throughput Units. Maximum value could be 20."
+  validation {
+    condition     = var.capacity >= 1 && var.capacity <= 20
+    error_message = "The Capacity of the Eventhub Namespace must be between 1 and 20."
+  }
+}
+
+variable "maximum_throughput_units" {
+  type        = number
+  description = "Specifies the maximum number of throughput units when Auto Inflate is Enabled. Valid values range from 1 - 20. This  option will enable 'Auto Inflate' capability of Eventhub namespace'"
+  validation {
+    condition = (
+      var.maximum_throughput_units == null ||
+    coalesce(var.maximum_throughput_units, 1) >= 1 && coalesce(var.maximum_throughput_units, 20) <= 20)
+    error_message = "The Max. throughput units of the Eventhub Namespace must be between 1 and 20."
+  }
+  default = null
+}
+
+variable "zone_redundant" {
+  type        = bool
+  description = "Is zone_redundancy enabled for the EventHub Namespace?"
+  default     = false
+}
+
+variable "authorized_vnet_subnet_ids" {
+  type        = list(string)
+  description = "IDs of the virtual network subnets authorized to connect to the Eventhub Namespace."
+  default     = []
+}
+
+variable "authorized_ips_or_cidr_blocks" {
+  type        = list(string)
+  description = "One or more IP Addresses, or CIDR Blocks which should be able to access the Eventhub Namespace."
+  default     = []
+}
